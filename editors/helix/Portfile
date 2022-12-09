@@ -24,26 +24,27 @@ maintainers         {gmail.com:herby.gillot @herbygillot} \
 # Helix's build process requires bit
 fetch.type          git
 
-# Helix does not build well using frozen deps
-build.pre_args-delete \
-                    --frozen
-
 post-extract {
     system -W ${worksrcpath} "git submodule update --init"
 }
 
 destroot {
+    xinstall -d ${destroot}${prefix}/share/${name}/
     xinstall -m 0755 \
         ${worksrcpath}/target/[cargo.rust_platform]/release/hx \
-        ${destroot}${prefix}/bin/
+        ${destroot}${prefix}/share/${name}/
 
-    xinstall -d ${destroot}${prefix}/share/${name}/
     copy ${worksrcpath}/runtime ${destroot}${prefix}/share/${name}/
-}
+	
+	# Wrapper script that sets HELIX_RUNTIME directory
+	touch ${worksrcpath}/hx
+	cat >> ${worksrcpath}/hx <<EOF
+	#!/usr/bin/env sh
 
-notes "
-    Helix also needs it's runtime files so make sure to copy/symlink the
-    ${prefix}/share/${name}/runtime directory into your config directory
-    (for example ~/.config/helix/runtime). This location can be overriden
-    via the HELIX_RUNTIME environment variable.
-"
+	HELIX_RUNTIME="${destroot}${prefix}/share/${name}/runtime" exec ${destroot}${prefix}/share/${name}/hx "\$@"
+	EOF
+	chmod +x ${worksrcpath}/hx
+    xinstall -m 0755 \
+        ${worksrcpath}/hx \
+        ${destroot}${prefix}/bin/
+}
